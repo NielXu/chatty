@@ -156,7 +156,27 @@ io.on('connection', function(socket){
             socket.emit('nickname', {status: SUCCESS});
         }
     });
+
+    socket.on('status', function(request) {
+        const { uid } = request;
+        if(!uid) {
+            socket.emit('status', {status: FAILED, message: 'Unrecognized user, UID is missing'});
+        }
+        else if(!checkRegistered(uid)) {
+            socket.emit('status', {status: FAILED, message: 'Unrecognized user, UID is not registered'});
+        }
+        else {
+            socket.emit('status', {status: SUCCESS, detail: getStatus(uid)});
+        }
+    })
 });
+
+function getStatus(uid) {
+    return {
+        nickname: CLIENTS_POOL[uid].nickname,
+        joined: CLIENTS_POOL[uid].joined? CLIENTS_POOL[uid].joined : "None"
+    };
+}
 
 function changeNickName(uid, nickname) {
     CLIENTS_POOL[uid].nickname = nickname;

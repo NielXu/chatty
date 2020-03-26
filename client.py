@@ -20,6 +20,16 @@ For more information, use $help.
 
 
 @CLIENT.event
+def status(response):
+    if response['status'] == SUCCESS:
+        detail = response['detail']
+        print("<Info> Your nickname:", detail['nickname'])
+        print("<Info> Room you are in:", detail['joined'])
+    else:
+        print("<Error>", response['message'])
+
+
+@CLIENT.event
 def new_room(response):
     if response['status'] == SUCCESS:
         print("<Info> Successfully created new room:", response['room'])
@@ -78,26 +88,31 @@ def cli_intepr(inp):
     origin_inp = inp
     inp = inp.strip()
     splitted = inp.split()
+    # Skip empty line
+    if len(splitted) == 0 or len(splitted[0]) == 0:
+        return
     # Creating a new room with password
-    if inp.startswith("$create"):
+    if splitted[0] == "$create":
         if len(splitted) < 2:
             print("<Error> Require password to create a new room: $create <password>")
         else:
             CLIENT.emit('new_room', {'uid': UID, 'password': splitted[1]})
-    elif inp.startswith("$join"):
+    elif splitted[0] == "$join":
         if len(splitted) < 2:
             print("<Error> Require room number to join: $join <room_number> <password>")
         elif len(splitted) < 3:
             print("<Error> Require password to join room: $join <room_number> <password>")
         else:
             CLIENT.emit('join_room', {'uid': UID, 'room': splitted[1], 'password': splitted[2]})
-    elif inp.startswith("$leave"):
+    elif splitted[0] == "$leave":
         CLIENT.emit('leave_room', {'uid': UID})
-    elif inp.startswith("$nick"):
+    elif splitted[0] == "$nick":
         if len(splitted) < 2:
             print("<Error> No nick name given: $nick <name>")
         else:
             CLIENT.emit('nickname', {'uid': UID, 'nickname': splitted[1]})
+    elif splitted[0] == "$status":
+        CLIENT.emit('status', {'uid': UID})
     else:
         if inp.startswith("$"):
             print("<Warn> $ usually used in commands")
