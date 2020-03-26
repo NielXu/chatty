@@ -9,13 +9,13 @@ SUCCESS = 0
 FAILED = 1
 CLIENT.connect("http://localhost:5000")
 UID = str(uuid.uuid4())
+NICK = "anonymous"
 WELCOME_MESSAGE = """
 Welcome to Chatty v0.0.1a, here are some useful commands:
     $create <password>: Create a room and automatically join
     $join <room> <password>: Join a room with password
     $leave <room>: Leave the current room
 For more information, use $help.
-
 """
 
 
@@ -44,6 +44,14 @@ def leave_room(response):
 
 
 @CLIENT.event
+def nickname(response):
+    if response['status'] != SUCCESS:
+        print("<Error>", response['message'])
+    else:
+        print("<Info> Successfully changed your nickname")
+
+
+@CLIENT.event
 def register(response):
     if response['status'] == FAILED:
         print("<Error>", response['message'])
@@ -62,7 +70,7 @@ def message(response):
     if response['status'] != SUCCESS:
         print("<Error>", response['message'])
     elif 'received' in response:
-        print("<Received>", response['received'])
+        print("<"+ response['from'] +">", response['received'])
 
 
 def cli_intepr(inp):
@@ -85,6 +93,11 @@ def cli_intepr(inp):
             CLIENT.emit('join_room', {'uid': UID, 'room': splitted[1], 'password': splitted[2]})
     elif inp.startswith("$leave"):
         CLIENT.emit('leave_room', {'uid': UID})
+    elif inp.startswith("$nick"):
+        if len(splitted) < 2:
+            print("<Error> No nick name given: $nick <name>")
+        else:
+            CLIENT.emit('nickname', {'uid': UID, 'nickname': splitted[1]})
     else:
         if inp.startswith("$"):
             print("<Warn> $ usually used in commands")
@@ -92,7 +105,7 @@ def cli_intepr(inp):
 
 
 def REPL():
-    CLIENT.emit("register", {'uid': UID})
+    CLIENT.emit("register", {'uid': UID, "nickname": NICK})
     print(WELCOME_MESSAGE)
     while True:
         inp = input()

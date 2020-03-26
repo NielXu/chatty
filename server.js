@@ -21,6 +21,7 @@ let CLIENTS_POOL = {};
  *      UID (Unique ID for each user): {
  *          sock: The socket instance of this UID, each socket binds to one UID
  *          joined: RoomNumber (Room that this user is in)
+ *          nickname: Nickname of this user
  *      }
  * }
  */
@@ -33,12 +34,12 @@ io.on('connection', function(socket){
     });
 
     socket.on('register', function(request) {
-        const { uid } = request;
+        const { uid, nickname } = request;
         if(!uid) {
             socket.emit('register', {status: FAILED, message: 'Unrecognized user, UID is missing'});
         }
         else {
-            registerUser(uid, socket);
+            registerUser(uid, socket, nickname);
             socket.emit('register', {status: SUCCESS});
         }
     });
@@ -138,10 +139,32 @@ io.on('connection', function(socket){
             }
         }
     });
+
+    socket.on('nickname', function(request) {
+        const { uid, nickname } = request;
+        if(!uid) {
+            socket.emit('nickname', {status: FAILED, message: 'Unrecognized user, UID is missing'});
+        }
+        else if(!checkRegistered(uid)) {
+            socket.emit('nickname', {status: FAILED, message: 'Unrecognized user, UID is not registered'});
+        }
+        else if(!nickname) {
+            socket.emit('nickname', {status: FAILED, message: 'No nickname given'});
+        }
+        else {
+            changeNickName(uid, nickname);
+            socket.emit('nickname', {status: SUCCESS});
+        }
+    });
 });
+
+function changeNickName(uid, nickname) {
+    CLIENTS_POOL[uid].nickname = nickname;
+}
 
 function sendMessage(uid, message) {
     const joined = CLIENTS_POOL[uid].joined;
+    const nickname = CLIENTS_POOL[uid].nickname
     if(!joined) {
         return {success: false, message: "Did not join any room"};
     }
@@ -152,18 +175,19 @@ function sendMessage(uid, message) {
             // Dont send to itself
             if(e !== uid) {
                 const sock = CLIENTS_POOL[e].sock;
-                sock.emit('message', {status: SUCCESS, received: message});
+                sock.emit('message', {status: SUCCESS, received: message, from: nickname});
             }
         });
         return {success: true};
     }
 }
 
-function registerUser(uid, sock) {
+function registerUser(uid, sock, nickname) {
     if(!CLIENTS_POOL.hasOwnProperty(uid)) {
         CLIENTS_POOL[uid] = {
             sock: sock,
-            joined: null
+            joined: null,
+            nickname: nickname? nickname : "anonymous"
         }
         console.log(`User[${uid}]: user registered, with socketID: ${sock.id}`);
     }
